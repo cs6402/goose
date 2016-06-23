@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+
 	configLog()
 	cache, err := NewCache()
 	if err != nil {
