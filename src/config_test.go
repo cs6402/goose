@@ -3,33 +3,32 @@ package main
 
 import (
 	"fmt"
-	"reflect"
+
 	"testing"
 
-	"github.com/pelletier/go-toml"
+	"github.com/BurntSushi/toml"
 )
 
-//type Config struct {
-//	redisConfig RedisConfig
-//}
+type Config struct {
+	redisConfig RedisConfig
+}
 
-//type RedisConfig struct {
-//	auth string
-//	url  string
-//}
+type RedisConfig struct {
+	auth string
+	url  string
+}
 
 func TestL(t *testing.T) {
 	filename := "config.toml"
-	//	var config Config
-	config, err := toml.LoadFile(filename)
-	if err != nil {
+	var config Config
+
+	if _, err := toml.Decode(filename, &config); err != nil {
 		fmt.Println("Error ", err.Error())
 		t.Errorf("Reverse(%q) == %q, want %q")
-
 	} else {
 		// retrieve data directly
-		user := config.Get("redis.url")
-		fmt.Println("User is ", user, reflect.TypeOf(user))
+		//		user := config.Get("redis.url")
+		fmt.Println("User is ", config)
 		//		password := config.Get("postgres.password").(string)
 
 		//		// or using an intermediate object
