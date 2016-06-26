@@ -1,5 +1,5 @@
 // cache
-package main
+package core
 
 import (
 	"log"
@@ -9,16 +9,11 @@ import (
 	"github.com/mediocregopher/radix.v2/redis"
 )
 
-type RedisCache struct {
-	O        interface{}
-	instance *pool.Pool
-}
-
 var once sync.Once
+var instance *pool.Pool
 
-func NewCache() (*RedisCache, error) {
+func NewCache() (*pool.Pool, error) {
 
-	var instance *RedisCache
 	var initError error
 	once.Do(func() {
 
@@ -27,20 +22,19 @@ func NewCache() (*RedisCache, error) {
 			if err != nil {
 				return nil, err
 			}
-			if err = client.Cmd("AUTH", "").Err; err != nil {
+			if err = client.Cmd("AUTH", config.RedisConfig.Auth).Err; err != nil {
 				client.Close()
 				return nil, err
 			}
 			return client, nil
 		}
-		p, err := pool.NewCustom("tcp", "", 10, df)
+		p, err := pool.NewCustom("tcp", config.RedisConfig.Url, 10, df)
 
-		//		client, err := redis.Dial("tcp", "")
 		if err != nil {
 			log.Println("Cache init error", err)
 			initError = err
 		} else {
-			instance = &RedisCache{instance: p}
+			instance = p
 		}
 	})
 	return instance, initError
