@@ -9,12 +9,22 @@ import (
 )
 
 type Config struct {
-	RedisConfig redisConfig
+	RedisConfig    *redisConfig
+	AwsConfig      *awsConfig
+	DatabaseConfig *databaseConfig
 }
 
 type redisConfig struct {
 	Auth string
 	Url  string
+}
+type awsConfig struct {
+	AccessKey string
+	SecretKey string
+}
+
+type databaseConfig struct {
+	hosts []string
 }
 
 var onceConfig sync.Once
