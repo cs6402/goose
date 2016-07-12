@@ -12,6 +12,7 @@ type Config struct {
 	RedisConfig    *redisConfig
 	AwsConfig      *awsConfig
 	DatabaseConfig *databaseConfig
+	HttpConfig     *httpConfig
 }
 
 type redisConfig struct {
@@ -27,6 +28,10 @@ type databaseConfig struct {
 	hosts []string
 }
 
+type httpConfig struct {
+	Port string
+}
+
 var onceConfig sync.Once
 var config Config
 
@@ -38,7 +43,7 @@ func NewConfig(file string) (*Config, error) {
 			fmt.Println("Error ", err)
 			initError = err
 		} else {
-			fmt.Println("User is ", config.RedisConfig.Auth)
+			fmt.Println("User is ", config)
 		}
 	})
 	return &config, initError

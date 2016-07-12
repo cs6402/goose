@@ -1,0 +1,5 @@
+go get github.com/gocql/gocql
+go get github.com/BurntSushi/toml
+go get github.com/mediocregopher/radix.v2
+go get github.com/gorilla/websocket
+go get gopkg.in/tylerb/graceful.v1

@@ -2,30 +2,33 @@
 package main
 
 import (
+	"control"
 	"core"
 	"log"
-	"os"
-	"time"
 )
 
 func main() {
-	config, err := core.NewConfig(os.Args[1])
-	log.Println(&config)
-	check(err)
-	configLog()
-	_, err = core.NewCache()
-	check(err)
+	core.NewConfig("config.toml")
+	//	config, err := core.NewConfig("config.toml")
+	//	log.Println(&config)
+	//	check(err)
+	//	configLog()
+	//	_, err = core.NewCache()
+	//	check(err)
 	// TODO database
 	// TODO AWS SQS
 	// TODO Handler
 	wa := make(chan bool)
-	go func() {
-		log.Println(&config)
-		time.Sleep(time.Second * 5)
-		wa <- true
-	}()
+	go control.NewServer(wa)
+	//	go func() {
+	//		//		log.Println(&config)
+	//		time.Sleep(time.Minute * 1)
+	//		wa <- true
+	//	}()
 	log.Println("Server initialzation succeed!")
 	<-wa
+
+	log.Println("Server shutdown!")
 }
 func check(err error) {
 	if err != nil {
