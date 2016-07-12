@@ -3,7 +3,7 @@ package control
 
 import (
 	"bytes"
-
+	"core"
 	"flag"
 	"log"
 	"net/http"
@@ -63,15 +63,15 @@ func NewServer(sh chan bool) {
 		mux.HandleFunc("/", serveHome)
 		mux.HandleFunc("/shutdown", shutdown)
 		mux.HandleFunc("/ws", serveWs)
-		//		var buffer bytes.Buffer
-		//		buffer.WriteString(":")
-		//		buffer.WriteString(core.Config.HttpConfig.Port)
+		var buffer bytes.Buffer
+		buffer.WriteString(":")
+		buffer.WriteString(core.Get().HttpConfig.Port)
 
 		server = &graceful.Server{
 			Timeout: 10 * time.Second,
 			Server: &http.Server{
-				//				Addr:    buffer.String(),
-				Addr:    ":8080",
+				Addr: buffer.String(),
+				//				Addr:    ":8080",
 				Handler: mux,
 			},
 			BeforeShutdown: func() bool {

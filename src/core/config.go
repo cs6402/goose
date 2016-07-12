@@ -2,7 +2,9 @@
 package core
 
 import (
-	"fmt"
+	"encoding/json"
+	"flag"
+	"log"
 	"sync"
 
 	"github.com/BurntSushi/toml"
@@ -25,7 +27,7 @@ type awsConfig struct {
 }
 
 type databaseConfig struct {
-	hosts []string
+	Hosts []string
 }
 
 type httpConfig struct {
@@ -35,15 +37,20 @@ type httpConfig struct {
 var onceConfig sync.Once
 var config Config
 
-func NewConfig(file string) (*Config, error) {
+func Get() *Config {
+	return &config
+}
+
+func NewConfig() (*Config, error) {
 	var initError error
 	onceConfig.Do(func() {
-
-		if _, err := toml.DecodeFile(file, &config); err != nil {
-			fmt.Println("Error ", err)
+		path := flag.String("config", "config.toml", "input config file path, or using default path: config.toml ")
+		if _, err := toml.DecodeFile(*path, &config); err != nil {
 			initError = err
 		} else {
-			fmt.Println("User is ", config)
+			body, _ := json.Marshal(&config)
+			log.Println("Loading config succeed. Config:", *path, string(body))
+
 		}
 	})
 	return &config, initError
