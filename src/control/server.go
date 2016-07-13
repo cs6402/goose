@@ -11,13 +11,18 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/auth0/go-jwt-middleware"
+	"github.com/dgrijalva/jwt-go"
+
+	"github.com/urfave/negroni"
 	"gopkg.in/tylerb/graceful.v1"
 )
 
 var addr = flag.String("addr", ":8080", "http service address")
-var homeTemplate = template.Must(template.ParseFiles("home.html"))
+var homeTemplate = template.Must(template.ParseFiles("index.html"))
 
 func serveHome(w http.ResponseWriter, r *http.Request) {
+
 	if r.URL.Path != "/" {
 		http.Error(w, "Not found", 404)
 		return
@@ -60,30 +65,43 @@ func NewServer(sh chan bool) {
 		go hub.run()
 
 		mux := http.NewServeMux()
-		mux.HandleFunc("/", serveHome)
-		mux.HandleFunc("/shutdown", shutdown)
-		mux.HandleFunc("/ws", serveWs)
+
 		var buffer bytes.Buffer
 		buffer.WriteString(":")
 		buffer.WriteString(core.Get().HttpConfig.Port)
 
+		jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+			ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+				return []byte("My Secret"), nil
+			},
+			Debug:         true,
+			SigningMethod: jwt.SigningMethodHS256,
+		})
+
+		n := negroni.Classic()
+		mux.HandleFunc("/", serveHome)
+		mux.HandleFunc("/shutdown", shutdown)
+		mux.HandleFunc("/ws", serveWs)
+		mux.Handle("/ping", negroni.New(
+			negroni.HandlerFunc(jwtMiddleware.HandlerWithNext),
+			negroni.Wrap(http.HandlerFunc(shutdown)),
+		))
+		n.UseHandler(mux)
 		server = &graceful.Server{
 			Timeout: 10 * time.Second,
 			Server: &http.Server{
-				Addr: buffer.String(),
-				//				Addr:    ":8080",
-				Handler: mux,
+				Addr:    buffer.String(),
+				Handler: n,
 			},
 			BeforeShutdown: func() bool {
 				log.Println("bye")
 				return true
 			},
 		}
-		server.ListenAndServe()
 
-		//	err := http.ListenAndServe(*addr, nil)
-		//	if err != nil {
-		//		log.Fatal("ListenAndServe: ", err)
-		//	}
+		err := server.ListenAndServe()
+		if err != nil {
+			log.Fatal("ListenAndServe: ", err)
+		}
 	})
 }

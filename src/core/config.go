@@ -15,6 +15,7 @@ type Config struct {
 	AwsConfig      *awsConfig
 	DatabaseConfig *databaseConfig
 	HttpConfig     *httpConfig
+	jwtConfig      *jwtConfig
 }
 
 type redisConfig struct {
@@ -32,6 +33,10 @@ type databaseConfig struct {
 
 type httpConfig struct {
 	Port string
+}
+
+type jwtConfig struct {
+	Secret string
 }
 
 var onceConfig sync.Once
