@@ -5,8 +5,10 @@ import (
 	"bytes"
 	"core"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"text/template"
 	"time"
@@ -34,6 +36,17 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	homeTemplate.Execute(w, r.Host)
 
+}
+func addJWT(w http.ResponseWriter, r *http.Request) {
+	expiration := time.Now().Add(365 * 24 * time.Hour)
+	cookie := http.Cookie{Name: "Authentication", Value: `bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJuYmYiOjE0Njg0MzE1NDUsImV4cCI6MTQ2ODQzNTE0NSwiaWF0IjoxNDY4NDMxNTQ1LCJqdGkiOiJpZDEyMzQ1NiJ9.AkI6DnCkBxDgcCNWxmHjQPTCoIjt4m2a2OxMpUqs3MQ`, Expires: expiration}
+	http.SetCookie(w, &cookie)
+
+	//	w.Header().Set("Authentication", `bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2p3dC1pZHAuZXhhbXBsZS5jb20iLCJzdWIiOiJtYWlsdG86bWlrZUBleGFtcGxlLmNvbSIsIm5iZiI6MTQzMDc3OTMwNSwiZXhwIjoxNDYyMzE1MzA1LCJpYXQiOjE0MzA3NzkzMDUsImp0aSI6ImlkMTIzNDU2IiwidHlwIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9yZWdpc3RlciJ9.KbVlagrOLiy-R65eUrVuno_IAjW-J5i_ySoSrs2SgjU
+	//									`)
+	var buffer bytes.Buffer
+	buffer.WriteString("OK")
+	w.Write(buffer.Bytes())
 }
 func shutdown(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/shutdown" {
@@ -72,9 +85,20 @@ func NewServer(sh chan bool) {
 
 		jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
 			ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-				return []byte("My Secret"), nil
+				return []byte("616161"), nil
 			},
-			Debug:         true,
+			Debug: true,
+			Extractor: func(r *http.Request) (string, error) {
+				c, err := r.Cookie("Authentication")
+				if err != nil {
+					return "", err
+				}
+				authHeaderParts := strings.Split(c.Value, " ")
+				if len(authHeaderParts) != 2 || strings.ToLower(authHeaderParts[0]) != "bearer" {
+					return "", fmt.Errorf("Authorization header format must be Bearer {token}")
+				}
+				return authHeaderParts[1], nil
+			},
 			SigningMethod: jwt.SigningMethodHS256,
 		})
 
@@ -82,7 +106,8 @@ func NewServer(sh chan bool) {
 		mux.HandleFunc("/", serveHome)
 		mux.HandleFunc("/shutdown", shutdown)
 		mux.HandleFunc("/ws", serveWs)
-		mux.Handle("/ping", negroni.New(
+		mux.HandleFunc("/ping", addJWT)
+		mux.Handle("/pong", negroni.New(
 			negroni.HandlerFunc(jwtMiddleware.HandlerWithNext),
 			negroni.Wrap(http.HandlerFunc(shutdown)),
 		))
