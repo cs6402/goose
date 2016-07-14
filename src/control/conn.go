@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
+	"github.com/gorilla/context"
 	"github.com/gorilla/websocket"
 )
 
@@ -119,8 +121,17 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
+	user := context.Get(r, "user").(*jwt.Token)
+	//	if user != nil {
+	//		z := user.(*jwt.Token)
+	//		log.Println("user", z.Claims.(jwt.MapClaims)["foo"])
+	//	}
 	conn := &Conn{send: make(chan []byte, 256), ws: ws}
 	hub.register <- conn
+	var greeting bytes.Buffer
+	greeting.WriteString("HI, ")
+	greeting.WriteString(user.Claims.(jwt.MapClaims)["foo"].(string))
+	conn.send <- greeting.Bytes()
 	go conn.writePump()
 	conn.readPump()
 }

@@ -9,7 +9,6 @@ import (
 
 func main() {
 	core.NewConfig()
-	//	config, err := core.NewConfig("config.toml")
 	//	log.Println(&config)
 	//	check(err)
 	//	configLog()
