@@ -15,7 +15,7 @@ type Config struct {
 	AwsConfig      *awsConfig
 	DatabaseConfig *databaseConfig
 	HttpConfig     *httpConfig
-	jwtConfig      *jwtConfig
+	JWTConfig      *jWTConfig
 }
 
 type redisConfig struct {
@@ -28,21 +28,22 @@ type awsConfig struct {
 }
 
 type databaseConfig struct {
-	Hosts []string
+	Hosts    []string
+	Keyspace string
 }
 
 type httpConfig struct {
 	Port string
 }
 
-type jwtConfig struct {
+type jWTConfig struct {
 	Secret string
 }
 
 var onceConfig sync.Once
 var config Config
 
-func Get() *Config {
+func GetConfig() *Config {
 	return &config
 }
 

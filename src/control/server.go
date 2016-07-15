@@ -35,11 +35,11 @@ func NewServer(sh chan bool) {
 
 		var buffer bytes.Buffer
 		buffer.WriteString(":")
-		buffer.WriteString(core.Get().HttpConfig.Port)
+		buffer.WriteString(core.GetConfig().HttpConfig.Port)
 
 		jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
 			ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-				return []byte("616161"), nil
+				return []byte(core.GetConfig().JWTConfig.Secret), nil
 			},
 			Debug: true,
 			Extractor: jwtmiddleware.FromFirst(jwtmiddleware.FromAuthHeader,
@@ -59,14 +59,15 @@ func NewServer(sh chan bool) {
 		})
 
 		n := negroni.Classic()
-		for k, v := range route {
-			r.HandleFunc(k, v)
-		}
-		for k, v := range routeWithAuth {
-			r.Handle(k, negroni.New(
-				negroni.HandlerFunc(jwtMiddleware.HandlerWithNext),
-				negroni.Wrap(http.HandlerFunc(v)),
-			))
+		for _, v := range routes {
+			if v.auth {
+				r.Handle(v.path, negroni.New(
+					negroni.HandlerFunc(jwtMiddleware.HandlerWithNext),
+					negroni.Wrap(http.HandlerFunc(v.handleFunc)),
+				)).Methods(v.method)
+			} else {
+				r.HandleFunc(v.path, v.handleFunc).Methods(v.method)
+			}
 		}
 
 		n.UseHandler(r)

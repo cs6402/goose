@@ -6,10 +6,11 @@ import (
 )
 
 type Message struct {
-	receiver  string
-	payload   string
-	sender    string
-	timestamp int
+	Receiver        string `json:"R"`
+	Content         string `json:"C"`
+	Sender          string `json:"S"`
+	SenderMessageId string `json:"SI"`
+	Timestamp       int64  `json:"T"`
 }
 
 func sendMessage() {

@@ -17,16 +17,10 @@ func main() {
 	// TODO database
 	// TODO AWS SQS
 	// TODO Handler
-	wa := make(chan bool)
-	go control.NewServer(wa)
-	//	go func() {
-	//		//		log.Println(&config)
-	//		time.Sleep(time.Minute * 1)
-	//		wa <- true
-	//	}()
+	shutdownCh := make(chan bool)
+	go control.NewServer(shutdownCh)
 	log.Println("Server initialzation succeed!")
-	<-wa
-
+	<-shutdownCh
 	log.Println("Server shutdown!")
 }
 func check(err error) {

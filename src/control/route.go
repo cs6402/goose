@@ -3,6 +3,7 @@ package control
 
 import (
 	"bytes"
+	"core"
 	"log"
 	"net/http"
 	"text/template"
@@ -13,14 +14,19 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var route = map[string]func(http.ResponseWriter, *http.Request){
-	"/ping":     addJWT,
-	"/":         serveHome,
-	"/shutdown": shutdown,
+var routes = [...]*requestMapping{
+	&requestMapping{"/ping", addJWT, false, "GET"},
+	&requestMapping{"/ping", addJWT, false, "POST"},
+	&requestMapping{"/", serveHome, false, "GET"},
+	&requestMapping{"/shutdown", shutdown, false, "GET"},
+	&requestMapping{"/ws", serveWs, true, "GET"},
 }
-var routeWithAuth = map[string]func(http.ResponseWriter, *http.Request){
 
-	"/ws": serveWs,
+type requestMapping struct {
+	path       string
+	handleFunc func(http.ResponseWriter, *http.Request)
+	auth       bool
+	method     string
 }
 
 func addJWT(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +37,7 @@ func addJWT(w http.ResponseWriter, r *http.Request) {
 		"exp": time.Now().AddDate(0, 0, 1).Unix(),
 	})
 
-	tokenString, err := jtoken.SignedString([]byte("616161"))
+	tokenString, err := jtoken.SignedString([]byte(core.GetConfig().JWTConfig.Secret))
 	if err != nil {
 		log.Println(err.Error())
 

@@ -9,13 +9,13 @@ import (
 	"github.com/mediocregopher/radix.v2/redis"
 )
 
-var once sync.Once
+var onceCache sync.Once
 var instance *pool.Pool
 
 func NewCache() (*pool.Pool, error) {
 
 	var initError error
-	once.Do(func() {
+	onceCache.Do(func() {
 
 		df := func(network, addr string) (*redis.Client, error) {
 			client, err := redis.Dial(network, addr)
