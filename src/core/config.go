@@ -42,22 +42,16 @@ type jWTConfig struct {
 
 var onceConfig sync.Once
 var config Config
+var path = flag.String("config", "config.toml", "input config file path, or using default path: config.toml ")
 
-func GetConfig() *Config {
-	return &config
-}
-
-func NewConfig() (*Config, error) {
-	var initError error
+func NewConfig() *Config {
 	onceConfig.Do(func() {
-		path := flag.String("config", "config.toml", "input config file path, or using default path: config.toml ")
 		if _, err := toml.DecodeFile(*path, &config); err != nil {
-			initError = err
+			log.Panicln("Config init failed.", err)
 		} else {
 			body, _ := json.Marshal(&config)
 			log.Println("Loading config succeed. Config:", *path, string(body))
-
 		}
 	})
-	return &config, initError
+	return &config
 }

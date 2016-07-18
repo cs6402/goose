@@ -37,7 +37,7 @@ func addJWT(w http.ResponseWriter, r *http.Request) {
 		"exp": time.Now().AddDate(0, 0, 1).Unix(),
 	})
 
-	tokenString, err := jtoken.SignedString([]byte(core.GetConfig().JWTConfig.Secret))
+	tokenString, err := jtoken.SignedString([]byte(core.NewConfig().JWTConfig.Secret))
 	if err != nil {
 		log.Println(err.Error())
 

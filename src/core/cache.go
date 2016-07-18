@@ -10,11 +10,9 @@ import (
 )
 
 var onceCache sync.Once
-var instance *pool.Pool
+var cache *pool.Pool
 
-func NewCache() (*pool.Pool, error) {
-
-	var initError error
+func NewCache() *pool.Pool {
 	onceCache.Do(func() {
 
 		df := func(network, addr string) (*redis.Client, error) {
@@ -31,11 +29,10 @@ func NewCache() (*pool.Pool, error) {
 		p, err := pool.NewCustom("tcp", config.RedisConfig.Url, 10, df)
 
 		if err != nil {
-			log.Println("Cache init error", err)
-			initError = err
+			log.Panicln("Cache init failed.", err)
 		} else {
-			instance = p
+			cache = p
 		}
 	})
-	return instance, initError
+	return cache
 }

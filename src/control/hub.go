@@ -3,7 +3,7 @@ package control
 
 type Hub struct {
 	// Registered connections.
-	connections map[*Conn]bool
+	connections map[string]*Conn
 
 	// Inbound messages from the connections.
 	broadcast chan []byte
@@ -19,26 +19,26 @@ var hub = Hub{
 	broadcast:   make(chan []byte),
 	register:    make(chan *Conn),
 	unregister:  make(chan *Conn),
-	connections: make(map[*Conn]bool),
+	connections: make(map[string]*Conn),
 }
 
 func (h *Hub) run() {
 	for {
 		select {
 		case conn := <-h.register:
-			h.connections[conn] = true
+			h.connections[conn.id] = conn
 		case conn := <-h.unregister:
-			if _, ok := h.connections[conn]; ok {
-				delete(h.connections, conn)
+			if _, ok := h.connections[conn.id]; ok {
+				delete(h.connections, conn.id)
 				close(conn.send)
 			}
 		case message := <-h.broadcast:
-			for conn := range h.connections {
+			for _, conn := range h.connections {
 				select {
 				case conn.send <- message:
 				default:
 					close(conn.send)
-					delete(h.connections, conn)
+					delete(h.connections, conn.id)
 				}
 			}
 		}

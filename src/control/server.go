@@ -35,11 +35,11 @@ func NewServer(sh chan bool) {
 
 		var buffer bytes.Buffer
 		buffer.WriteString(":")
-		buffer.WriteString(core.GetConfig().HttpConfig.Port)
+		buffer.WriteString(core.NewConfig().HttpConfig.Port)
 
 		jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
 			ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-				return []byte(core.GetConfig().JWTConfig.Secret), nil
+				return []byte(core.NewConfig().JWTConfig.Secret), nil
 			},
 			Debug: true,
 			Extractor: jwtmiddleware.FromFirst(jwtmiddleware.FromAuthHeader,

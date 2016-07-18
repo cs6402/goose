@@ -3,13 +3,18 @@ package control
 
 import (
 	"bytes"
+	"encoding/json"
 	"log"
+	. "model"
 	"net/http"
+	"service"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/context"
 	"github.com/gorilla/websocket"
+	"github.com/satori/go.uuid"
 )
 
 const (
@@ -43,6 +48,8 @@ type Conn struct {
 
 	// Buffered channel of outbound messages.
 	send chan []byte
+
+	id string
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -63,7 +70,19 @@ func (c *Conn) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		hub.broadcast <- message
+		msg := &Message{}
+		err = json.Unmarshal(message, msg)
+		bo := strings.Split(string(message), ",")
+		target := hub.connections[bo[0]]
+		if target != nil {
+			target.send <- []byte(bo[1])
+		}
+		if err != nil {
+			// byte message
+			continue
+		}
+		service.SendMessage(msg, string(message))
+		//		hub.broadcast <- message
 	}
 }
 
@@ -126,10 +145,11 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	//		z := user.(*jwt.Token)
 	//		log.Println("user", z.Claims.(jwt.MapClaims)["foo"])
 	//	}
-	conn := &Conn{send: make(chan []byte, 256), ws: ws}
+	conn := &Conn{send: make(chan []byte, 256), ws: ws, id: uuid.NewV4().String()}
 	hub.register <- conn
 	var greeting bytes.Buffer
 	greeting.WriteString("HI, ")
+	greeting.WriteString(conn.id)
 	greeting.WriteString(user.Claims.(jwt.MapClaims)["foo"].(string))
 	conn.send <- greeting.Bytes()
 	go conn.writePump()
