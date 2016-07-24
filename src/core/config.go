@@ -30,6 +30,9 @@ type awsConfig struct {
 type databaseConfig struct {
 	Hosts    []string
 	Keyspace string
+	Write    string
+	Read     string
+	Confirm  string
 }
 
 type httpConfig struct {
