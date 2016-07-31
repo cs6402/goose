@@ -6,56 +6,73 @@ import (
 	. "model"
 )
 
+const (
+	// CQL statement for adding message
+	addMessage = `INSERT INTO message (id, owner, sender, payload) VALUES (now(), ?, ?, ?) USING TTL ?`
+	// CQL statement for retrieving message
+	retrieveMessages = `SELECT id, payload FROM message WHERE owner = ? and sender = ? and id > ?  LIMIT ?`
+	// CQL statement for retrieving message
+	retrieveOldestMessages = `SELECT id, payload FROM message WHERE owner = ? and sender = ? LIMIT ?`
+	// CQL statement for counting message
+	countMessages = `SELECT COUNT(*), id FROM message WHERE owner = ? and sender = ? and id >= ? and id <= ? ORDER BY id desc`
+	// CQL statement for retrieving message in fixed range
+	retrieveMessagesByFixedRange = `SELECT id, payload FROM message WHERE owner = ? and sender = ? and id >= ? and id <= ?`
+	// CQL statement for retrieving message in fixed range
+	retrieveLatestMessages = `SELECT payload FROM message WHERE owner = ? and sender = ? ORDER BY id DESC LIMIT ?`
+)
+
 func AddMessage(msg *Message, payload string, ttl int) (result error) {
 	session := core.NewCassandraWConn()
-	if err := session.Query(`INSERT INTO message (owner, id, payload) VALUES (?, now(), ?) USING TTL ?`,
-		msg.Receiver, payload, ttl).Exec(); err != nil {
+	if err := session.Query(addMessage,
+		msg.Receiver, msg.Sender, payload, ttl).Exec(); err != nil {
 		result = err
 	}
 	return
 }
-func GetMessages(receiver string, last string, limit int) ([]*MessageWithId, error) {
+
+// less to more
+func GetMessages(receiver string, sender string, last string, limit int) ([]*MessageWithId, error) {
 	session := core.NewCassandraRConn()
-	iter := session.Query(`SELECT id, payload FROM message WHERE owner = ? and id > ? ORDER BY id ASC LIMIT ?`,
-		receiver, last, limit).Iter()
+	iter := session.Query(retrieveMessages,
+		receiver, sender, last, limit).Iter()
 	result := make([]*MessageWithId, iter.NumRows())
 	var id string
 	var payload string
-	index := iter.NumRows() - 1
+	index := 0
 	for iter.Scan(&id, &payload) {
 		result[index] = &MessageWithId{id, payload}
-		index--
-		//		log.Println(id, payload)
+		index++
+		log.Println(id, payload)
 	}
 
 	return result, iter.Close()
 }
 
-func GetMessagesFromBeginning(receiver string, limit int) ([]*MessageWithId, error) {
+func GetMessagesFromBeginning(receiver string, sender string, limit int) ([]*MessageWithId, error) {
 	session := core.NewCassandraRConn()
-	iter := session.Query(`SELECT id, payload FROM message WHERE owner = ? ORDER BY id ASC LIMIT ?`,
-		receiver, limit).Iter()
+	iter := session.Query(retrieveOldestMessages,
+		receiver, sender, limit).Iter()
 	result := make([]*MessageWithId, iter.NumRows(), iter.NumRows())
 	var id string
 	var payload string
 	log.Println(len(result))
 	log.Println(iter.NumRows())
-	index := iter.NumRows() - 1
+	index := 0
 	for iter.Scan(&id, &payload) {
 		result[index] = &MessageWithId{id, payload}
-		index--
+		index++
 		//		log.Println(id, payload)
 	}
 
 	return result, iter.Close()
 }
 
-func ConfirmMessages(receiver string, start string, end string, limit int, counts int) ([]*MessageWithId, error) {
+func ConfirmMessages(receiver string, sender string, start string, end string, limit int, counts int) ([]*MessageWithId, error) {
 	session := core.NewCassandraCConn()
 	var dbCounts int
 	var endId string
-	err := session.Query(`SELECT COUNT(*), id FROM message WHERE owner = ? and id >= ? and id <= ?`,
-		receiver, start, end).Scan(&dbCounts, &endId)
+	err := session.Query(countMessages,
+		receiver, sender, start, end).Scan(&dbCounts, &endId)
 
 	if err != nil {
 		return nil, err
@@ -64,12 +81,12 @@ func ConfirmMessages(receiver string, start string, end string, limit int, count
 		// normal
 		//		wsession := core.NewCassandraWConn()
 		//		wsession.Query(``)
-		log.Println("Confirm messages owner:", receiver, " from:", start, " to:", end, "counts:", counts)
+		log.Println("Confirm messages owner:", receiver, " sender:", sender, " from:", start, " to:", end, "counts:", counts)
 		return nil, nil
 	} else {
 		// unexpected
-		iter := session.Query(`SELECT id, payload FROM message WHERE owner = ? and id >= ? and id <= ?`,
-			receiver, start, end).Iter()
+		iter := session.Query(retrieveMessagesByFixedRange,
+			receiver, sender, start, end).Iter()
 		result := make([]*MessageWithId, iter.NumRows())
 		var id string
 		var payload string
@@ -79,11 +96,23 @@ func ConfirmMessages(receiver string, start string, end string, limit int, count
 			index++
 			//			log.Println("Confirm ", id, payload)
 		}
-		if length := len(result); length != 0 && length == counts && result[0].Id == end && result[length-1].Id == start {
+		if length := len(result); length != 0 && length == counts && result[length-1].Id == end && result[0].Id == start {
 			return nil, iter.Close()
 		}
 
 		return result, iter.Close()
 	}
 
+}
+func GetLatestMessage(receiver string, sender string, limit int) []string {
+	session := core.NewCassandraCConn()
+	iter := session.Query(checkMessage, receiver, sender, limit).Iter()
+	result := make([]string, iter.NumRows())
+	var payload string
+	index := 0
+	for iter.Scan(&payload) {
+		result[index] = payload
+		index++
+	}
+	return result
 }
