@@ -59,7 +59,7 @@ func setup(t *testing.T) (*gocql.Session, *gocql.ClusterConfig) {
 	}
 
 	// create test keyspace NOT Supported
-	//	if err := session.Query(`CREATE KEYSPACE simplex WITH replication = {'class':'SimpleStrategy', 'replication_factor':1};`).Exec(); err != nil {
+	//	if err := session.Query(`CREATE KEYSPACE tk WITH replication = {'class':'SimpleStrategy', 'replication_factor':1};`).Exec(); err != nil {
 	//		t.Log("can not create test keyspace")
 	//		t.Fatal(err.Error())
 	//	}

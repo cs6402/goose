@@ -15,24 +15,31 @@ import (
 )
 
 const (
-	LIMITION  = 3
-	FROM_USER = "Daniel"
-	TO_USER   = "Admin"
-	TTL       = 86400
+	LIMITION      = 3
+	RECEIVER_USER = "Daniel"
+	SEND_USER1    = "Admin"
+	SEND_USER2    = "PIG"
+	TTL           = 86400
+	NUMBER        = 1
 )
 
 func TestDatabase(t *testing.T) {
 	session := setup(t)
 	defer session.Close()
 	go func() {
-		for i := 0; i < 10000; i++ {
-			testInsert(t, session)
+		for i := 0; i < NUMBER; i++ {
+			testInsert(t, session, SEND_USER1)
+		}
+	}()
+	func() {
+		for i := 0; i < NUMBER; i++ {
+			testInsert(t, session, SEND_USER2)
 		}
 	}()
 	//	list := testFirstReceive(t, session)
 	//	testConfirm(t, session, list)
 	last := "648ef970-51b9-11e6-8b66-a90758ebdcfd"
-	allCount := 1
+	allCount := 0
 	accessCount := 0
 	var list []*MessageWithId
 	for {
@@ -41,6 +48,7 @@ func TestDatabase(t *testing.T) {
 		}
 		list = testReceive(t, session, last)
 		if list != nil && len(list) != 0 {
+			time.Sleep(10 * time.Microsecond)
 			testConfirm(t, session, list)
 			allCount += len(list)
 			accessCount++
@@ -49,18 +57,19 @@ func TestDatabase(t *testing.T) {
 		} else {
 			t.Log("No looping ", last, ",", len(list))
 		}
-		if allCount == 10001 {
+		if allCount >= 1 {
 			break
 		}
+		// simulate network latency
 		time.Sleep(10 * time.Microsecond)
 	}
 	tearDown(t, session)
 }
 
-func testInsert(t *testing.T, session *gocql.Session) {
+func testInsert(t *testing.T, session *gocql.Session, sender string) {
 
 	msg := &Message{
-		FROM_USER, time.Now().String(), TO_USER, uuid.NewV4().String(), time.Now().Unix(), 1,
+		RECEIVER_USER, time.Now().String(), sender, uuid.NewV4().String(), time.Now().Unix(), 1,
 	}
 	payload, _ := json.Marshal(msg)
 	if err := AddMessage(msg, string(payload), TTL); err != nil {
@@ -72,7 +81,7 @@ func testConfirm(t *testing.T, session *gocql.Session, list []*MessageWithId) {
 	length := len(list)
 	end := list[0].Id
 	start := list[length-1].Id
-	list, err := ConfirmMessages(FROM_USER, start, end, LIMITION, length)
+	list, err := ConfirmMessages(RECEIVER_USER, start, end, LIMITION, length)
 	if err != nil {
 		t.Log(length, ",", end, ",", start)
 		t.Log(err.Error())
@@ -85,7 +94,7 @@ func testConfirm(t *testing.T, session *gocql.Session, list []*MessageWithId) {
 
 func testFirstReceive(t *testing.T, session *gocql.Session) []*MessageWithId {
 	//	list, err := GetMessagesFromBeginning("Daniel", 50)
-	list, err := GetMessagesFromBeginning(FROM_USER, LIMITION)
+	list, err := GetMessagesFromBeginning(RECEIVER_USER, LIMITION)
 	if err != nil {
 		t.Log(err.Error())
 		t.Error("Failed to get", err)
@@ -94,7 +103,7 @@ func testFirstReceive(t *testing.T, session *gocql.Session) []*MessageWithId {
 }
 func testReceive(t *testing.T, session *gocql.Session, last string) []*MessageWithId {
 	//	list, err := GetMessagesFromBeginning("Daniel", 50)
-	list, err := GetMessages(FROM_USER, last, LIMITION)
+	list, err := GetMessages(RECEIVER_USER, last, LIMITION)
 	if err != nil {
 		t.Log(err.Error())
 		t.Error("Failed to get", err)
