@@ -8,19 +8,35 @@ import (
 
 const (
 	// CQL statement for adding message
-	addMessage = `INSERT INTO message (id, owner, sender, payload) VALUES (now(), ?, ?, ?) USING TTL ?`
+	addMessage = `INSERT INTO message (mid, chat_id, sender, payload) VALUES (now(), ?, ?, ?)`
 	// CQL statement for retrieving message
-	retrieveMessages = `SELECT id, payload FROM message WHERE owner = ? and sender = ? and id > ?  LIMIT ?`
+	retrieveMessages = `SELECT mid, payload, dateOf(mid) as date FROM message WHERE chat_id = ? and sender = ? and id > ?  LIMIT ?`
 	// CQL statement for retrieving message
-	retrieveOldestMessages = `SELECT id, payload FROM message WHERE owner = ? and sender = ? LIMIT ?`
+	retrieveOldestMessages = `SELECT mid, payload, dateOf(mid) FROM message WHERE chat_id = ? and sender = ? LIMIT ?`
 	// CQL statement for counting message
-	countMessages = `SELECT COUNT(*), id FROM message WHERE owner = ? and sender = ? and id >= ? and id <= ? ORDER BY id desc`
+	countMessages = `SELECT COUNT(*), MAX(mid) FROM message WHERE chat_id = ? and sender = ? and id >= ? and id <= ? ORDER BY id desc`
 	// CQL statement for retrieving message in fixed range
-	retrieveMessagesByFixedRange = `SELECT id, payload FROM message WHERE owner = ? and sender = ? and id >= ? and id <= ?`
-	// CQL statement for retrieving message in fixed range
-	retrieveLatestMessages = `SELECT payload FROM message WHERE owner = ? and sender = ? ORDER BY id DESC LIMIT ?`
+	retrieveMessagesByFixedRange = `SELECT mid, payload, dateOf(mid) as date FROM message WHERE chatid = ? and receiver = ? and id >= ? and id <= ?`
+
+	// chat list
+	createChat              = `UPDATE chat_list SET chat[?] = ? WHERE owner = ? and type = ?`
+	retrieveChatListByType  = `SELECT * FROM chat_list WHERE owner = ? and type = ?`
+	retrieveChatLists       = `SELECT * FROM chat_list WHERE owner = ?`
+	updateChatLastMessageId = `UPDATE chat_list SET last[?] = ? WHERE owner = ? and type = ?`
+	removeChat              = `DELETE chat[?], last[?] FROM chat_list WHERE owner = ? and type = ?`
+
+	// chat meta
+	retrieveChatMeta            = `SELECT * FROM chat_meta WHERE chat_id = ? and owner = ?`
+	updateChatLastReadMessageId = `INSERT INTO chat_meta (chat_id, owner, last_read) VALUES (?, ?, ?)`
+	retrieveLastReadMessageId   = `SELECT last_read, dateOf(last_read) FROM chat_meta WHERE chat_id = ? and owner = ?`
 )
 
+//func ListChat(owner string) []string {
+//	session := core.NewCassandraRConn()
+//	if err := session.Query(listChatId, owner).Exec(); err != nil {
+//		result = err
+//	}
+//}
 func AddMessage(msg *Message, payload string, ttl int) (result error) {
 	session := core.NewCassandraWConn()
 	if err := session.Query(addMessage,
@@ -104,15 +120,16 @@ func ConfirmMessages(receiver string, sender string, start string, end string, l
 	}
 
 }
-func GetLatestMessage(receiver string, sender string, limit int) []string {
-	session := core.NewCassandraCConn()
-	iter := session.Query(checkMessage, receiver, sender, limit).Iter()
-	result := make([]string, iter.NumRows())
-	var payload string
-	index := 0
-	for iter.Scan(&payload) {
-		result[index] = payload
-		index++
-	}
-	return result
-}
+
+//func GetLatestMessage(receiver string, sender string, limit int) []string {
+//	session := core.NewCassandraCConn()
+//	iter := session.Query(checkMessage, receiver, sender, limit).Iter()
+//	result := make([]string, iter.NumRows())
+//	var payload string
+//	index := 0
+//	for iter.Scan(&payload) {
+//		result[index] = payload
+//		index++
+//	}
+//	return result
+//}

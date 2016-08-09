@@ -16,9 +16,9 @@ func SendMessage(msg *Message, payload string) {
 	}
 }
 
-func ReceiveMessage(receiver string, last string) []*MessageWithId {
+func ReceiveMessage(receiver string, sender string, last string) []*MessageWithId {
 	// panic recovery
-	result, err := repository.GetMessages(receiver, last, 50)
+	result, err := repository.GetMessages(receiver, sender, last, 50)
 	if err != nil {
 		log.Println("receive message failed", receiver, last)
 	}

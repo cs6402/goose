@@ -11,7 +11,7 @@ func main() {
 	configLog()
 	core.NewConfig()
 	core.NewCache()
-	core.NewCassandraConn()
+	//	core.NewCassandraRConn()
 	// TODO AWS SQS
 	shutdownCh := make(chan bool)
 	go control.NewServer(shutdownCh)
