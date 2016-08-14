@@ -7,7 +7,6 @@ import (
 	"log"
 	. "model"
 	"net/http"
-	"service"
 	"strings"
 	"time"
 
@@ -70,6 +69,7 @@ func (c *Conn) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+
 		msg := &Message{}
 		err = json.Unmarshal(message, msg)
 		bo := strings.Split(string(message), ",")
@@ -77,11 +77,12 @@ func (c *Conn) readPump() {
 		if target != nil {
 			target.send <- []byte(bo[1])
 		}
+
 		if err != nil {
 			// byte message
 			continue
 		}
-		service.SendMessage(msg, string(message))
+		//service.SendMessage(msg, string(message))
 		//		hub.broadcast <- message
 	}
 }
@@ -114,9 +115,10 @@ func (c *Conn) writePump() {
 				return
 			}
 			w.Write(message)
-
+			time.Sleep(5 * time.Second)
 			// Add queued chat messages to the current websocket message.
 			n := len(c.send)
+			log.Println("n:", n)
 			for i := 0; i < n; i++ {
 				w.Write(newline)
 				w.Write(<-c.send)

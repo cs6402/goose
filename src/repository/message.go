@@ -8,15 +8,16 @@ import (
 
 const (
 	// CQL statement for adding message
-	addMessage = `INSERT INTO message (mid, chat_id, sender, payload) VALUES (now(), ?, ?, ?)`
+	addMessage = `INSERT INTO chat_message (mid, chat_id, sender, payload) VALUES (now(), ?, ?, ?)`
 	// CQL statement for retrieving message
-	retrieveMessages = `SELECT mid, payload, dateOf(mid) as date FROM message WHERE chat_id = ? and sender = ? and id > ?  LIMIT ?`
-	// CQL statement for retrieving message
-	retrieveOldestMessages = `SELECT mid, payload, dateOf(mid) FROM message WHERE chat_id = ? and sender = ? LIMIT ?`
+
+	retrieveMessages = `SELECT mid, payload, dateOf(mid) as date FROM chat_message WHERE chat_id = ? and sender = ? and mid > ?  LIMIT ?`
+	// CQL statement for retrieving message , using mid > 1381670f-1dd2-11b2-7f7f-7f7f7f7f7f7f
+	// retrieveOldestMessages = `SELECT mid, payload, dateOf(mid) FROM chat_message WHERE chat_id = ? and sender = ? LIMIT ?`
 	// CQL statement for counting message
-	countMessages = `SELECT COUNT(*), MAX(mid) FROM message WHERE chat_id = ? and sender = ? and id >= ? and id <= ? ORDER BY id desc`
+	countMessages = `SELECT COUNT(*), MAX(mid) FROM chat_message WHERE chat_id = ? and sender = ? and mid >= ? and mid <= ?`
 	// CQL statement for retrieving message in fixed range
-	retrieveMessagesByFixedRange = `SELECT mid, payload, dateOf(mid) as date FROM message WHERE chatid = ? and receiver = ? and id >= ? and id <= ?`
+	retrieveMessagesByFixedRange = `SELECT mid, payload, dateOf(mid) as date FROM chat_message WHERE chat_id = ? and receiver = ? and mid >= ? and mid <= ?`
 
 	// chat list
 	createChat              = `UPDATE chat_list SET chat[?] = ? WHERE owner = ? and type = ?`
@@ -31,22 +32,11 @@ const (
 	retrieveLastReadMessageId   = `SELECT last_read, dateOf(last_read) FROM chat_meta WHERE chat_id = ? and owner = ?`
 )
 
-//func ListChat(owner string) []string {
-//	session := core.NewCassandraRConn()
-//	if err := session.Query(listChatId, owner).Exec(); err != nil {
-//		result = err
-//	}
-//}
-func AddMessage(msg *Message, payload string, ttl int) (result error) {
+func AddMessage(msg *Message, payload string) error {
 	session := core.NewCassandraWConn()
-	if err := session.Query(addMessage,
-		msg.Receiver, msg.Sender, payload, ttl).Exec(); err != nil {
-		result = err
-	}
-	return
+	return session.Query(addMessage, msg.Receiver, msg.Sender, payload).Exec()
 }
 
-// less to more
 func GetMessages(receiver string, sender string, last string, limit int) ([]*MessageWithId, error) {
 	session := core.NewCassandraRConn()
 	iter := session.Query(retrieveMessages,
@@ -64,24 +54,24 @@ func GetMessages(receiver string, sender string, last string, limit int) ([]*Mes
 	return result, iter.Close()
 }
 
-func GetMessagesFromBeginning(receiver string, sender string, limit int) ([]*MessageWithId, error) {
-	session := core.NewCassandraRConn()
-	iter := session.Query(retrieveOldestMessages,
-		receiver, sender, limit).Iter()
-	result := make([]*MessageWithId, iter.NumRows(), iter.NumRows())
-	var id string
-	var payload string
-	log.Println(len(result))
-	log.Println(iter.NumRows())
-	index := 0
-	for iter.Scan(&id, &payload) {
-		result[index] = &MessageWithId{id, payload}
-		index++
-		//		log.Println(id, payload)
-	}
+//func GetMessagesFromBeginning(receiver string, sender string, limit int) ([]*MessageWithId, error) {
+//	session := core.NewCassandraRConn()
+//	iter := session.Query(retrieveOldestMessages,
+//		receiver, sender, limit).Iter()
+//	result := make([]*MessageWithId, iter.NumRows(), iter.NumRows())
+//	var id string
+//	var payload string
+//	log.Println(len(result))
+//	log.Println(iter.NumRows())
+//	index := 0
+//	for iter.Scan(&id, &payload) {
+//		result[index] = &MessageWithId{id, payload}
+//		index++
+//		//		log.Println(id, payload)
+//	}
 
-	return result, iter.Close()
-}
+//	return result, iter.Close()
+//}
 
 func ConfirmMessages(receiver string, sender string, start string, end string, limit int, counts int) ([]*MessageWithId, error) {
 	session := core.NewCassandraCConn()
@@ -121,15 +111,27 @@ func ConfirmMessages(receiver string, sender string, start string, end string, l
 
 }
 
-//func GetLatestMessage(receiver string, sender string, limit int) []string {
-//	session := core.NewCassandraCConn()
-//	iter := session.Query(checkMessage, receiver, sender, limit).Iter()
-//	result := make([]string, iter.NumRows())
-//	var payload string
-//	index := 0
-//	for iter.Scan(&payload) {
-//		result[index] = payload
-//		index++
-//	}
-//	return result
-//}
+func CreateChat(chatId string, target string, owner string, chatType int) error {
+	session := core.NewCassandraWConn()
+	return session.Query(createChat, chatId, target, owner, chatType).Exec()
+}
+
+func RetrieveChatListByType(owner string, chatType int) {
+	session := core.NewCassandraRConn()
+	session.Query(retrieveChatListByType, owner, chatType)
+}
+
+func RetrieveChatList(owner string) {
+	session := core.NewCassandraRConn()
+	session.Query(retrieveChatLists, owner).Bind()
+}
+
+func UpdateChatLastMessageId(chatId string, lastMessageId string, owner string, chatType int) error {
+	session := core.NewCassandraWConn()
+	return session.Query(updateChatLastMessageId, lastMessageId, owner, chatType).Exec()
+}
+
+func DeleteChatList(chatId string, owner string, chatType int) error {
+	session := core.NewCassandraWConn()
+	return session.Query(removeChat, chatId, chatId, owner, chatType).Exec()
+}
