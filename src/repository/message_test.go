@@ -7,11 +7,12 @@ import (
 	"flag"
 	"log"
 	. "model"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/satori/go.uuid"
+	//	"github.com/satori/go.uuid"
 )
 
 const (
@@ -20,24 +21,24 @@ const (
 	SEND_USER1    = "Admin"
 	//	SEND_USER2    = "PIG"
 	TTL    = 86400
-	NUMBER = 100000
+	NUMBER = 3
 )
 
 func TestDatabase(t *testing.T) {
 	session := setup(t)
 	defer session.Close()
-	//	func() {
-	//		for i := 0; i < NUMBER; i++ {
-	//			testInsert(t, session, SEND_USER1)
-	//		}
-	//	}()
+	func() {
+		for i := 0; i < NUMBER; i++ {
+			testInsert(t, session, SEND_USER1, strconv.Itoa(i))
+		}
+	}()
 	//	func() {
 	//		for i := 0; i < NUMBER; i++ {
 	//			testInsert(t, session, SEND_USER2)
 	//		}
 	//	}()
-	//	list := testFirstReceive(t, session)
-	//	testConfirm(t, session, list)
+	//		list := testFirstReceive(t, session)
+	//		testConfirm(t, session, list)
 	last := "9538ac52-5723-11e6-a94f-59061160675e"
 	allCount := 0
 	accessCount := 0
@@ -68,13 +69,13 @@ func TestDatabase(t *testing.T) {
 	tearDown(t, session)
 }
 
-func testInsert(t *testing.T, session *gocql.Session, sender string) {
+func testInsert(t *testing.T, session *gocql.Session, sender string, sid string) {
 
 	msg := &Message{
-		RECEIVER_USER, time.Now().String(), sender, uuid.NewV4().String(), time.Now().Unix(), 1,
+		RECEIVER_USER, time.Now().String(), sender, sid, time.Now().Unix(), 1,
 	}
 	payload, _ := json.Marshal(msg)
-	if err := AddMessage(msg, string(payload), TTL); err != nil {
+	if err := AddMessage(msg, string(payload)); err != nil {
 		t.Log(err.Error())
 		t.Error(err)
 	}
@@ -96,15 +97,15 @@ func testConfirm(t *testing.T, session *gocql.Session, list []*MessageWithId) {
 	}
 }
 
-func testFirstReceive(t *testing.T, session *gocql.Session) []*MessageWithId {
-	//	list, err := GetMessagesFromBeginning("Daniel", 50)
-	list, err := GetMessagesFromBeginning(RECEIVER_USER, SEND_USER1, LIMITION)
-	if err != nil {
-		t.Log(err.Error())
-		t.Error("Failed to get", err)
-	}
-	return list
-}
+//func testFirstReceive(t *testing.T, session *gocql.Session) []*MessageWithId {
+//	//	list, err := GetMessagesFromBeginning("Daniel", 50)
+//	list, err := GetMessagesFromBeginning(RECEIVER_USER, SEND_USER1, LIMITION)
+//	if err != nil {
+//		t.Log(err.Error())
+//		t.Error("Failed to get", err)
+//	}
+//	return list
+//}
 func testReceive(t *testing.T, session *gocql.Session, last string) []*MessageWithId {
 	//	list, err := GetMessagesFromBeginning("Daniel", 50)
 	list, err := GetMessages(RECEIVER_USER, SEND_USER1, last, LIMITION)

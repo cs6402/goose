@@ -8,7 +8,7 @@ import (
 
 const (
 	// CQL statement for adding message
-	addMessage = `INSERT INTO chat_message (mid, chat_id, sender, payload) VALUES (now(), ?, ?, ?)`
+	addMessage = `INSERT INTO chat_message (mid, chat_id, sender, sid, payload) VALUES (now(), ?, ?, ?, ?)`
 	// CQL statement for retrieving message
 
 	retrieveMessages = `SELECT mid, payload, dateOf(mid) as date FROM chat_message WHERE chat_id = ? and sender = ? and mid > ?  LIMIT ?`
@@ -34,7 +34,7 @@ const (
 
 func AddMessage(msg *Message, payload string) error {
 	session := core.NewCassandraWConn()
-	return session.Query(addMessage, msg.Receiver, msg.Sender, payload).Exec()
+	return session.Query(addMessage, msg.Receiver, msg.Sender, msg.SenderMessageId, payload).Exec()
 }
 
 func GetMessages(receiver string, sender string, last string, limit int) ([]*MessageWithId, error) {
@@ -118,7 +118,7 @@ func CreateChat(chatId string, target string, owner string, chatType int) error 
 
 func RetrieveChatListByType(owner string, chatType int) {
 	session := core.NewCassandraRConn()
-	session.Query(retrieveChatListByType, owner, chatType)
+	session.Query(retrieveChatListByType, owner, chatType).Attempts()
 }
 
 func RetrieveChatList(owner string) {

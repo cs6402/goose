@@ -3,11 +3,14 @@ CREATE TABLE IF NOT EXISTS chat_message (
 	mid timeuuid,
 	sender varchar,
 	payload varchar,	
+	sid varchar,
+	svr varchar,
 	PRIMARY KEY (
         (chat_id, sender),
         mid
     )
 ) WITH default_time_to_live=604800;
+CREATE INDEX chat_message_by_sid ON chat_message(sid);
 
 CREATE TABLE IF NOT EXISTS chat_list (
 	owner varchar,
